@@ -1,58 +1,28 @@
-import json
 import os
-from typing import Iterable, Generator
+from typing import Iterable
 
 try:
     import ijson
-except Exception:
+except ImportError:
     ijson = None
 
 
 def stream_data(file_path: str) -> Iterable[dict]:
-    """Yield records from a JSON file in a streaming fashion.
-
-    Supports either a JSON array of objects ("[ {...}, {...} ]") or
-    newline-delimited JSON (NDJSON). Uses `ijson` when available for
-    low-memory parsing.
-    """
+    print(f"stream_data: opening file {file_path}")
+    
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"{file_path} not found")
 
-    # Try streaming JSON array with ijson
-    if ijson is not None:
-        with open(file_path, "r", encoding="utf-8") as f:
-            try:
-                print("stream_data: using ijson to parse JSON array")
-                for obj in ijson.items(f, "item"):
-                    yield obj
-                return
-            except Exception:
-                # Fall through to NDJSON fallback
-                pass
+    if ijson is None:
+        raise RuntimeError(
+            "ijson is required for streaming large JSON arrays. "
+            "Install with `pip install ijson`."
+        )
 
-    # NDJSON fallback
     with open(file_path, "r", encoding="utf-8") as f:
-        print("stream_data: falling back to NDJSON/text parsing")
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                yield json.loads(line)
-            except json.JSONDecodeError:
-                # Last resort: try to parse whole file as JSON array
-                f.seek(0)
-                data = json.load(f)
-                if isinstance(data, list):
-                    for obj in data:
-                        yield obj
-                    return
-                raise
-
-
-def load_data(file_path: str) -> list:
-    """Convenience helper that loads the full file into memory (use with care).
-
-    Prefer `stream_data()` for large files.
-    """
-    return list(stream_data(file_path))
+        print(f"stream_data: using ijson to parse JSON array from {file_path}")
+        try:
+            for obj in ijson.items(f, "item"):
+                yield obj
+        except Exception as e:
+            raise RuntimeError(f"Failed to stream JSON data: {e}")
