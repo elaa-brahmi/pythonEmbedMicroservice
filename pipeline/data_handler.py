@@ -22,6 +22,7 @@ def stream_data(file_path: str) -> Iterable[dict]:
     if ijson is not None:
         with open(file_path, "r", encoding="utf-8") as f:
             try:
+                print("stream_data: using ijson to parse JSON array")
                 for obj in ijson.items(f, "item"):
                     yield obj
                 return
@@ -31,6 +32,7 @@ def stream_data(file_path: str) -> Iterable[dict]:
 
     # NDJSON fallback
     with open(file_path, "r", encoding="utf-8") as f:
+        print("stream_data: falling back to NDJSON/text parsing")
         for line in f:
             line = line.strip()
             if not line:
