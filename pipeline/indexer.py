@@ -1,18 +1,36 @@
 import time
 from tqdm import tqdm
 from .embedder import generate_embeddings
+from typing import Iterable
 
 
-def upsert_batches(index, model, data, batch_size=64):
+def upsert_batches(index, model, data: Iterable, batch_size=64) -> int:
     """
     Embeds and uploads job records to a Pinecone index in batches.
     Each record must have:
       id, job_title, description, company_name, location, experience_level, etc.
     """
 
-    for i in tqdm(range(0, len(data), batch_size), desc="Upserting batches"):
-        batch = data[i : i + batch_size]
+    # Support both sized sequences and iterables/generators
+    total = 0
+    iterator = iter(data)
 
+    def batch_iterator():
+        while True:
+            batch = []
+            try:
+                for _ in range(batch_size):
+                    batch.append(next(iterator))
+            except StopIteration:
+                if batch:
+                    yield batch
+                break
+            if batch:
+                yield batch
+
+    batch_count = 0
+    for batch in tqdm(batch_iterator(), desc="Upserting batches"):
+        batch_start = total
         # Combine job title + description for richer semantic meaning
         texts = [
             f"{item['job_title']} at {item.get('company_name', '')}. "
@@ -33,7 +51,7 @@ def upsert_batches(index, model, data, batch_size=64):
         for j, item in enumerate(batch):
             # Defensive: skip if embedding missing
             if j >= len(embeddings):
-                print(f"Warning: missing embedding for batch item {j} in batch starting at {i}")
+                print(f"Warning: missing embedding for batch item {j} in batch starting at {batch_start}")
                 continue
 
             vec = embeddings[j]
@@ -44,7 +62,7 @@ def upsert_batches(index, model, data, batch_size=64):
                 values = list(vec)
 
             vectors.append({
-                "id": str(item.get("id", f"batch-{i}-{j}")),
+                "id": str(item.get("id", f"batch-{batch_start}-{j}")),
                 "values": values,
                 "metadata": {
                     "job_title": item.get("job_title", ""),
@@ -66,9 +84,13 @@ def upsert_batches(index, model, data, batch_size=64):
             if vectors:
                 index.upsert(vectors=vectors)
         except Exception as e:
-            print(f"Error upserting batch starting at {i}: {e}")
+            print(f"Error upserting batch starting at {batch_start}: {e}")
 
-        # Optional throttle (avoid API rate limits)
-        time.sleep(0.1)
+    # Optional throttle (avoid API rate limits)
+    time.sleep(0.1)
 
-    print(f"✅ Successfully upserted {len(data)} job records to Pinecone.")
+    total += len(vectors)
+    batch_count += 1
+
+    print(f"✅ Successfully upserted {total} job records to Pinecone.")
+    return total

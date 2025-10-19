@@ -16,3 +16,4 @@ tqdm==4.67.1
 pandas==2.2.3
 requests>=2.31.0
 numpy>=1.26.4
+ijson
