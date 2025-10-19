@@ -1,6 +1,18 @@
-fastapi
-uvicorn
-sentence-transformers
-tqdm
-pinecone
-tqdm
+# ---- Core web framework ----
+fastapi==0.115.0
+uvicorn==0.32.0
+
+# ---- Pinecone SDK (modern client) ----
+pinecone>=5.0.0,<8.0.0
+
+# ---- Embedding model ----
+sentence-transformers==3.2.0
+torch>=2.2.0
+transformers>=4.44.0
+
+# ---- Utilities ----
+python-dotenv==1.0.1
+tqdm==4.67.1
+pandas==2.2.3
+requests>=2.31.0
+numpy>=1.26.4
