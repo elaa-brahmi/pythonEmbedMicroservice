@@ -35,5 +35,6 @@ async def embed_data():
         INDEX = init_pinecone()
 
     data = load_data(DATA_FILE)
+    print(f"Loaded {len(data)} job entries from {DATA_FILE}")
     upsert_batches(INDEX, MODEL, data)
     return {"message": f"Embedded {len(data)} jobs successfully."}
